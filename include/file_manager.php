@@ -63,4 +63,56 @@ function get_last_id(string $filename): int {
     // Default fallback
     return 1;
 }
+
+function set_config_value(string $key, $value): bool {
+    global $data_path;
+
+    $filepath = rtrim($data_path, '/') . '/config.json';
+
+    // Create directory if it doesn't exist
+    $dir = dirname($filepath);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0777, true);
+    }
+
+    // Load existing config data
+    $config = [];
+    if (file_exists($filepath)) {
+        $json = file_get_contents($filepath);
+        $decoded = json_decode($json, true);
+        if (is_array($decoded)) {
+            $config = $decoded;
+        }
+    }
+
+    // Set or update the key
+    $config[$key] = $value;
+
+    // Encode to JSON and save
+    $json_encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    return file_put_contents($filepath, $json_encoded) !== false;
+}
+
+function get_config_value(string $key, $default = null) {
+    global $data_path;
+
+    $filepath = rtrim($data_path, '/') . '/config.json';
+
+    // If the config file doesn't exist, return the default value
+    if (!file_exists($filepath)) {
+        return $default;
+    }
+
+    // Read and decode the config file
+    $json = file_get_contents($filepath);
+    $config = json_decode($json, true);
+
+    // If decoding fails or result is not an array, return default
+    if (!is_array($config)) {
+        return $default;
+    }
+
+    // Return the value if it exists, otherwise the default
+    return array_key_exists($key, $config) ? $config[$key] : $default;
+}
 ?>
