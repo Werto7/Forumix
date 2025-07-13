@@ -1,18 +1,15 @@
 <?php
 // install.php
+include(dirname(__FILE__)."/../include/file_manager.php");
 $installed = false;
 $currentDir = __DIR__;
 $parentDir = dirname($currentDir);
 $dataFile = dirname($parentDir) . '/data/config.json';
 if (is_file($dataFile)) {
 	$installed = true;
-	$json = file_get_contents($dataFile);
-
-    //Convert to an associative array
-    $config = json_decode($json, true);
 
     //Read value
-    $language = $config['Language'] ?? 'English'; // Fallback: English
+    $language = get_config_value("Language") ?? 'English'; // Fallback: English
 
 }
 if (!$installed) {
@@ -57,7 +54,6 @@ if (!$installed) {
         if (empty($errors)) {
             $installed = true;
 
-            include(dirname(__FILE__)."/../include/file_manager.php");
             global $data_path;
             $data = [
                 'name' => $adminName,
@@ -69,11 +65,7 @@ if (!$installed) {
         
             file_put_contents($data_path . "/pgp_keys/" . $adminName . ".txt", $pgpKey);
         
-            $data = [
-                "Language" => $language
-            ];
-
-            file_put_contents($data_path . '/config.json', json_encode($data, JSON_PRETTY_PRINT));
+            set_config_value("Language", $language);
         }
     }
 }
