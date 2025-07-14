@@ -42,4 +42,11 @@ if (!is_file($dataFile)) {
 HTML;
     exit;
 }
+else {
+	include 'header.php';
+	?>
+	</body>
+    </html>
+    <?php
+}
 ?>
