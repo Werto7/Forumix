@@ -43,8 +43,12 @@ include "lang/".get_config_value("Language")."/header.php";
                 <?php if (isset($_SESSION['user_name'])): ?>
                     <a href="/logout.php"><?= htmlspecialchars($lang_header['log_out']) ?></a>
                 <?php else: ?>
-                    <a href="/login.php"><?= htmlspecialchars($lang_header['log_in']) ?></a>
+                    <a href="login.php"><?= htmlspecialchars($lang_header['log_in']) ?></a>
+                    <a href="register.php"><?= htmlspecialchars($lang_header['register']) ?></a>
                 <?php endif; ?>
             </div>
         </nav>
     </header>
+    <?php if (isset($_SESSION['user_name'])): ?>
+        <div><?= htmlspecialchars(str_replace("%s", $_SESSION['user_name'], ($lang_header['loggedInAs']))) ?></div>
+    <?php endif; ?>
