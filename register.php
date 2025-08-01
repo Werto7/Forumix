@@ -2,7 +2,6 @@
 if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
 	ini_set('session.cookie_secure', 1);
 }
-ini_set('session.cookie_httponly', 1);
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -16,6 +15,8 @@ if (isset($_SESSION['user_name'])) {
 ob_start();
 include 'header.php';
 include "lang/" . get_config_value("Language") . "/register.php";
+require_once 'spinCaptcha.php';
+$captcha = new CaptchaBox();
 
 // Define data folder path
 $currentDir = __DIR__;
@@ -127,6 +128,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if ($userInput !== $randomPass) {
             $error = htmlspecialchars($lang_register['error_decrypt']);
             $step = 2;
+        } else if (!$captcha->isVerified()){
+        	$error = "Wrong Captcha";
+            $step = 2;
         } else {
             // Register user by saving public key
             $filename = $dataFolder . '/' . $username . '.txt';
@@ -165,6 +169,9 @@ elseif ($step === 2):
 	<textarea readonly rows="10" style="width: 100%;"><?php echo htmlspecialchars($pgpMessage); ?></textarea><br><br>
 	<label for="decrypted_pass"><?= htmlspecialchars($lang_register['token']) ?></label><br>
 	<input type="text" name="decrypted_pass" style="width: 100%;" required><br><br>
+	<?php
+	    $captcha->showCaptchaInline();
+	?>
 	<input type="submit" value="<?= htmlspecialchars($lang_register['register']) ?>" style="width: 100%; padding: 0.5em;">
 </form>
 
