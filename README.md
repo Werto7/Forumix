@@ -1,10 +1,17 @@
-# Forumix
-A concept of a forum software
+<h1>A Concept of a Forum Software</h1>
 
-The login function works, but the register function is currently not working.
+<p><strong>Status:</strong></p>
+<ul>
+  <li><span style="color:green;"><strong>Login function:</strong> working ✅</span></li>
+  <li><span style="color:red;"><strong>Register function:</strong> not working ❌</span></li>
+</ul>
 
-gnupg is required.
+<p><strong>Requirements:</strong></p>
+<ul>
+  <li><code>gnupg</code> must be installed</li>
+</ul>
 
-It is recommended that the php.ini file contains the following:
-session.cookie_httponly = 1
+<p><strong>Recommended <code>php.ini</code> settings:</strong></p>
+<pre><code>session.cookie_httponly = 1
 session.cookie_samesite = "Strict"
+</code></pre>
