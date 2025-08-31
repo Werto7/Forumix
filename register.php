@@ -64,7 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             	if (strpos($line, 'uid:') === 0) {
             	    $parts = explode(':', $line);
                     if (isset($parts[9])) {
-                    	$uid = $parts[9]; // z. B. "Max Mustermann <max@example.com>"
+                    	$uid = $parts[9]; //e.g. "Max Diesel <max@example.com>"
 
                         if (preg_match('/<([^>]+)>/', $uid, $emailMatch)) {
                         	$email = $emailMatch[1];
@@ -73,7 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         	$name = trim($uid);
                         }
 
-                        break; // Nur die erste uid verwenden
+                        break; //Use only the first uid
                     }
                 }
             }
@@ -94,30 +94,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $_SESSION['username'] = $name;
                 $step = 2;
 
-                // Generate random passphrase and encrypt it
-                $randomPass = bin2hex(random_bytes(16));
-                $_SESSION['passphrase'] = $randomPass;
-
-                // Save passphrase to temp file
-                $tmpPlain = tempnam(sys_get_temp_dir(), 'plain_');
-                $tmpOutput = tempnam(sys_get_temp_dir(), 'enc_');
-                $tmpPgp = tempnam(sys_get_temp_dir(), 'pgp_');
-                
-                file_put_contents($tmpPlain, $randomPass);
-                file_put_contents($tmpPgp, $pgpKey);
-                
-                $escapedKey = escapeshellarg($tmpPgp);
-                $escapedPlain = escapeshellarg($tmpPlain);
-                $escapedOut = escapeshellarg($tmpOutput);
-                
-                shell_exec("gpg --yes --batch --armor --trust-model always --recipient-file $escapedKey --output $escapedOut --encrypt $escapedPlain");
-                
-                $encryptedMessage = file_get_contents($tmpOutput);
-                $pgpMessage = trim($encryptedMessage);
-
-                unlink($tmpPlain);
-                unlink($tmpOutput);
-                unlink($tmpPgp);
+                generate();
+                $pgpMessage = $_SESSION['pgp_message'] ?? '';
             }
         }
     } elseif (isset($_POST['decrypted_pass'])) {// Step 2: Validate user decryption input
@@ -128,17 +106,62 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if ($userInput !== $randomPass) {
             $error = htmlspecialchars($lang_register['error_decrypt']);
             $step = 2;
-        } else if (!$captcha->isVerified()){
-        	$error = "Wrong Captcha";
-            $step = 2;
+            generate();
+            $pgpMessage = $_SESSION['pgp_message'] ?? '';
         } else {
-            // Register user by saving public key
-            $filename = $dataFolder . '/' . $username . '.txt';
-            file_put_contents($filename, $_SESSION['pgp_key']);
-            $success = "Registrierung erfolgreich! Willkommen, " . htmlspecialchars($username) . ".";
-            session_destroy();
+        	$result = $captcha->isVerified();
+            if ($result === "timeout"){
+        	    $error = "Time out";
+                $step = 2;
+                generate();
+                $pgpMessage = $_SESSION['pgp_message'] ?? '';
+            } else if ($result === false) {
+        	    $error = "Wrong Captcha";
+                $step = 2;
+                generate();
+                $pgpMessage = $_SESSION['pgp_message'] ?? '';
+            } else {
+                //Register user by saving public key
+                $filename = $dataFolder . '/' . $username . '.txt';
+                file_put_contents($filename, $_SESSION['pgp_key']);
+                $success = "Registrierung erfolgreich! Willkommen, " . htmlspecialchars($username) . ".";
+                session_destroy();
+            }
         }
     }
+}
+
+function generate() {
+    // erzeugen Passphrase
+    $randomPass = bin2hex(random_bytes(16));
+    $_SESSION['passphrase'] = $randomPass;
+
+    $tmpPlain  = tempnam(sys_get_temp_dir(), 'plain_');
+    $tmpOutput = tempnam(sys_get_temp_dir(), 'enc_');
+    $tmpPgp    = tempnam(sys_get_temp_dir(), 'pgp_');
+
+    file_put_contents($tmpPlain, $randomPass);
+    file_put_contents($tmpPgp, $_SESSION['pgp_key']);
+
+    $escapedKey   = escapeshellarg($tmpPgp);
+    $escapedPlain = escapeshellarg($tmpPlain);
+    $escapedOut   = escapeshellarg($tmpOutput);
+
+    // Befehl ausführen und Rückgabewert prüfen
+    $cmd = "gpg --yes --batch --armor --trust-model always --recipient-file $escapedKey --output $escapedOut --encrypt $escapedPlain 2>&1";
+    exec($cmd, $outputLines, $returnVar);
+
+    $encryptedMessage = '';
+    if ($returnVar === 0 && file_exists($tmpOutput) && filesize($tmpOutput) > 0) {
+        $encryptedMessage = trim(file_get_contents($tmpOutput));
+        $_SESSION['pgp_message'] = $encryptedMessage;
+        unset($_SESSION['pgp_error']);
+    }
+
+    // Aufräumen
+    @unlink($tmpPlain);
+    @unlink($tmpPgp);
+    @unlink($tmpOutput);
 }
 
 // Show Form 1 (PGP Key input)
@@ -169,9 +192,11 @@ elseif ($step === 2):
 	<textarea readonly rows="10" style="width: 100%;"><?php echo htmlspecialchars($pgpMessage); ?></textarea><br><br>
 	<label for="decrypted_pass"><?= htmlspecialchars($lang_register['token']) ?></label><br>
 	<input type="text" name="decrypted_pass" style="width: 100%;" required><br><br>
-	<?php
+	<div>
+    <?php
 	    $captcha->showCaptchaInline();
 	?>
+	</div>
 	<input type="submit" value="<?= htmlspecialchars($lang_register['register']) ?>" style="width: 100%; padding: 0.5em;">
 </form>
 

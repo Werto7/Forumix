@@ -1,5 +1,5 @@
 <?php
-header("Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline';");
+header("Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;");
 header('Referrer-Policy: no-referrer');
 // Session starten, falls noch nicht gestartet
 if (session_status() === PHP_SESSION_NONE) {
