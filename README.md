@@ -8,7 +8,8 @@
 
 <p><strong>Requirements:</strong></p>
 <ul>
-  <li><code>gnupg</code> must be installed</li>
+  <li><code>gnupg</code></li>
+  <li><code>imagemagick</code></li>
 </ul>
 
 <p><strong>Recommended <code>php.ini</code> settings:</strong></p>
