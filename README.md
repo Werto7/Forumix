@@ -19,4 +19,5 @@ session.cookie_samesite = "Strict"
 
 <p>The forum software has an integrated registration captcha.
 
-Before the forum is started, the captcha should be prepared.</p>
+Before the forum is started, the captcha should be prepared. More information about this here:
+https://github.com/Werto7/spinCaptcha</p>
