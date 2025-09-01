@@ -16,3 +16,7 @@
 <pre><code>session.cookie_httponly = 1
 session.cookie_samesite = "Strict"
 </code></pre>
+
+<p>The forum software has an integrated registration captcha.
+
+</p>
