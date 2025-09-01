@@ -19,4 +19,4 @@ session.cookie_samesite = "Strict"
 
 <p>The forum software has an integrated registration captcha.
 
-</p>
+Before the forum is started, the captcha should be prepared.</p>
