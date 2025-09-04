@@ -2,7 +2,7 @@
 
 <p><strong>Status:</strong></p>
 <ul>
-  <li><span style="color:green;"><strong>Login function:</strong> working ✅</span></li>
+  <li><span style="color:green;"><strong>Login function:</strong> not working ❌</span></li>
   <li><span style="color:red;"><strong>Register function:</strong> not working ❌</span></li>
 </ul>
 
