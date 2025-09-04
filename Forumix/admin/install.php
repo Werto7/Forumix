@@ -12,6 +12,64 @@ if (is_file($dataFile)) {
     $language = get_config_value("Language") ?? 'English'; // Fallback: English
 
 }
+
+/**
+ * Extract name and fingerprint from an ASCII-armored PGP public key
+ * Returns array [name|null, fingerprint|null]
+ */
+function extract_pgp_info($pgpKey) {
+    $name = null;
+    $fingerprint = null;
+
+    $desc = [
+        0 => ['pipe', 'r'],
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w'],
+    ];
+
+    $cmd = 'gpg --with-colons --import-options show-only --import 2>/dev/null';
+    $proc = @proc_open($cmd, $desc, $pipes);
+
+    if (!is_resource($proc)) {
+        return [$name, $fingerprint];
+    }
+
+    fwrite($pipes[0], $pgpKey);
+    fclose($pipes[0]);
+
+    $output = stream_get_contents($pipes[1]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+
+    proc_close($proc);
+
+    if ($output === false || $output === '') {
+        return [$name, $fingerprint];
+    }
+
+    $lines = explode("\n", $output);
+    foreach ($lines as $line) {
+        if (strpos($line, 'fpr:') === 0) {
+            $parts = explode(':', $line);
+            if (isset($parts[9]) && $parts[9] !== '') {
+                if (!$fingerprint) $fingerprint = trim($parts[9]);
+            }
+        }
+
+        if (strpos($line, 'uid:') === 0) {
+            $parts = explode(':', $line);
+            if (isset($parts[9]) && $parts[9] !== '') {
+                $uid = $parts[9]; //e.g. "Max Diesel <max@example.com>"
+                //Ignore email, just take everything up to the first "<"
+                $name = trim(preg_replace('/<.*$/', '', $uid));
+                break; // erste UID reicht
+            }
+        }
+    }
+
+    return [$name ?: null, $fingerprint ?: null];
+}
+
 if (!$installed) {
 	// Detect available languages from the 'lang' directory
     $langDir = dirname(__DIR__) . '/lang';
@@ -36,21 +94,26 @@ if (!$installed) {
     $errors = [];
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $adminName = trim($_POST['admin_name'] ?? '');
+        $adminName = "";
         $pgpKey = trim($_POST['pgp_key'] ?? '');
         $language = $_POST['language'] ?? $defaultLang;
 
-        // Simple validation
-        if ($adminName === '') {
-            $errors[] = 'Administrator name is required.';
+        //Validation, after reading $adminName and $pgpKey from $_POST:
+        list($extractedName, $extractedFpr) = extract_pgp_info($pgpKey);
+
+        $adminName = $extractedName;
+
+        if ($extractedFpr === null) {
+            $errors[] = 'Name could not be read';
         }
         if ($pgpKey === '') {
-            $errors[] = 'PGP key is required.';
+            $errors[] = 'PGP key is required';
         }
         if (!in_array($language, $languages)) {
-            $errors[] = 'Invalid language selected.';
+            $errors[] = 'Invalid language selected';
         }
 
+        //if everything is ok -> save
         if (empty($errors)) {
             $installed = true;
 
@@ -58,13 +121,25 @@ if (!$installed) {
             $data = [
                 'name' => $adminName,
                 'user_type' => 'Administrator',
-                'id' => get_last_id('users.json')
+                'id' => get_last_id('users.json'),
+                'fingerprint' => $extractedFpr
             ];
-            mkdir($data_path . "/pgp_keys", 0777, true);
+
+            // ensure pgp_keys dir
+            $pgpDir = rtrim($data_path, '/')."/pgp_keys";
+            @mkdir($pgpDir, 0777, true);
+
+            //determine filename: fingerprint (safe)
+            $keyFile = $extractedFpr . '.asc';
+
+            // prevent directory traversal
+            $keyFile = basename($keyFile);
+
             append_to_json_file($data, 'users.json');
-        
-            file_put_contents($data_path . "/pgp_keys/" . $adminName . ".txt", $pgpKey);
-        
+
+            // write key file (do NOT use raw $adminName as filename)
+            file_put_contents($pgpDir . "/" . $keyFile, $pgpKey);
+
             set_config_value("Language", $language);
         }
     }
@@ -164,10 +239,6 @@ if (!$installed) {
 
         <!-- Installation form -->
         <form action="" method="post">
-            <!-- Administrator name input -->
-            <label for="admin_name">Administrator Name</label>
-            <input type="text" id="admin_name" name="admin_name" value="<?= htmlspecialchars($_POST['admin_name'] ?? '') ?>" required>
-
             <!-- PGP key input -->
             <label for="pgp_key">PGP Public Key</label>
             <textarea id="pgp_key" name="pgp_key" rows="6" required><?= htmlspecialchars($_POST['pgp_key'] ?? '') ?></textarea>
